@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat - {{ room_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background-color: #f0f2f5; display: flex; flex-direction: column; height: 100vh;}
+        .chat-header { background-color: #075e54; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .chat-header h3 { margin: 0; font-size: 1.2em;}
+        .chat-header .room-info { display: flex; align-items: center; }
+        .chat-header .back-button { background-color: #128c7e; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; margin-left: 15px; text-decoration: none; }
+        .chat-header .back-button:hover { background-color: #25d366; }
+        .chat-container { flex-grow: 1; display: flex; overflow: hidden; }
+        .messages-area { flex-grow: 1; padding: 20px; overflow-y: auto; background-color: #fff; }
+        .message { margin-bottom: 15px; padding: 10px; border-radius: 8px; max-width: 70%; word-wrap: break-word; }
+        .message.sent { background-color: #dcf8c6; margin-left: auto; text-align: right; }
+        .message.received { background-color: #ece5dd; margin-right: auto; text-align: left; }
+        .message .username { font-weight: bold; display: block; margin-bottom: 4px; font-size: 0.9em; color: #555;}
+        .message .content { font-size: 1em; }
+        /* Estilo para a imagem dentro da mensagem */
+        .message img { max-width: 100%; height: auto; border-radius: 5px; margin-top: 5px; }
+        .message .timestamp { font-size: 0.7em; color: #999; display: block; margin-top: 4px;}
+        .input-area { background-color: #f0f0f0; padding: 15px 20px; display: flex; align-items: center; border-top: 1px solid #ccc;}
+        .input-area input[type="text"] { flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; margin-right: 10px; font-size: 1em;}
+        .input-area button { background-color: #075e54; color: white; padding: 10px 20px; border: none; border-radius: 20px; cursor: pointer; font-size: 1em; transition: background-color 0.3s ease;}
+        .input-area button:hover { background-color: #128c7e; }
+        /* Botão de upload de imagem */
+        .upload-button { position: relative; overflow: hidden; margin-right: 10px; cursor: pointer; }
+        .upload-button input[type="file"] { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+        .upload-button .fa-image { font-size: 1.5em; color: #666; }
+        
+        /* Emojis */
+        .emoji-picker { position: absolute; bottom: 70px; right: 20px; background-color: white; border: 1px solid #ccc; border-radius: 5px; padding: 10px; z-index: 10; max-height: 200px; overflow-y: auto; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: none; }
+        .emoji-picker span { cursor: pointer; font-size: 1.5em; margin: 5px; }
+        .emoji-button { cursor: pointer; font-size: 1.5em; margin-left: 10px; }
+        .room-header-info { display: flex; flex-direction: column; text-align: left; }
+        .room-header-info .room-name { font-weight: bold; }
+        .room-header-info .active-users { font-size: 0.8em; color: #ddd; }
+    </style>
+</head>
+<body>
+    <div class="chat-header">
+        <div class="room-info">
+            <div class="room-header-info">
+                <span class="room-name">{{ room_name }}</span>
+                <span class="active-users" id="active-users-count">Usuários ativos: 0</span>
+            </div>
+            <a href="{{ url_for('rooms') }}" class="back-button">Voltar</a>
+        </div>
+        <span>Logado como: <strong>{{ username }}</strong></span>
+    </div>
+
+    <div class="chat-container">
+        <div class="messages-area" id="messages-area">
+            {% for msg in messages %}
+                <div class="message {% if msg.username == username %}sent{% else %}received{% endif %}">
+                    <span class="username">{{ msg.username }}</span>
+                    {% if msg.tipo == 'image' %}
+                        <img src="{{ msg.conteudo }}" alt="Imagem enviada" class="message-image">
+                    {% else %}
+                        <span class="content">{{ msg.conteudo | safe }}</span>
+                    {% endif %}
+                    <span class="timestamp">{{ msg.timestamp }}</span>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="input-area">
+        <label for="image-upload" class="upload-button">
+            <i class="fas fa-image"></i>
+            <input type="file" id="image-upload" accept="image/*" style="display: none;">
+        </label>
+        <div class="emoji-picker" id="emoji-picker"></div>
+        <span class="emoji-button" id="emoji-button">😊</span>
+        <input type="text" id="message-input" placeholder="Digite sua mensagem...">
+        <button id="send-button">Enviar</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        const socket = io.connect('http://' + document.domain + ':' + location.port);
+        const messagesArea = document.getElementById('messages-area');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const emojiButton = document.getElementById('emoji-button');
+        const emojiPicker = document.getElementById('emoji-picker');
+        const imageUpload = document.getElementById('image-upload'); // Novo elemento
+
+        const currentUser = "{{ username }}";
+        const currentRoomId = "{{ room_id }}";
+        const currentRoomName = "{{ room_name }}";
+
+        const emojis = {
+            '😀': '😀', '😂': '😂', '😍': '😍', '👍': '👍', '❤️': '❤️', '😭': '😭', '🤔': '🤔',
+            '👋': '👋', '🙏': '🙏', '🚀': '🚀', '🌟': '🌟', '🍕': '🍕', '🐶': '🐶', '🐱': '🐱',
+            '✅': '✅', '❌': '❌', '💡': '💡', '🎉': '🎉', '💯': '💯', '🙏': '🙏', '💪': '💪'
+        };
+
+        function populateEmojiPicker() {
+            for (const emoji in emojis) {
+                const span = document.createElement('span');
+                span.textContent = emoji;
+                span.onclick = () => {
+                    messageInput.value += emojis[emoji];
+                    messageInput.focus();
+                };
+                emojiPicker.appendChild(span);
+            }
+        }
+        populateEmojiPicker();
+
+        emojiButton.addEventListener('click', () => {
+            emojiPicker.style.display = emojiPicker.style.display === 'block' ? 'none' : 'block';
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!emojiPicker.contains(e.target) && e.target !== emojiButton) {
+                emojiPicker.style.display = 'none';
+            }
+        });
+
+        // Modificada para lidar com tipos de mensagem (texto e imagem)
+        function addMessage(data) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message');
+            
+            if (data.username === currentUser) {
+                messageDiv.classList.add('sent');
+            } else {
+                messageDiv.classList.add('received');
+            }
+
+            let contentHtml = '';
+            if (data.type === 'image') {
+                contentHtml = `<img src="${data.message}" alt="Imagem enviada">`;
+            } else {
+                // Formata o conteúdo para incluir emojis
+                const formattedContent = data.message.replace(/:\w+:/g, (match) => {
+                    const emojiKey = match.replace(/:/g, '');
+                    return emojis[emojiKey] || match;
+                });
+                contentHtml = `<span class="content">${formattedContent}</span>`;
+            }
+
+            messageDiv.innerHTML = `
+                <span class="username">${data.username}</span>
+                ${contentHtml}
+                <span class="timestamp">${data.timestamp}</span>
+            `;
+            messagesArea.appendChild(messageDiv);
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        }
+
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (message) {
+                socket.emit('send_message', { 
+                    room_id: currentRoomId, 
+                    message: message 
+                });
+                messageInput.value = '';
+                emojiPicker.style.display = 'none';
+            }
+        }
+
+        // Nova função para enviar a imagem
+        function sendImage(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/upload_image', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error('Erro no upload:', data.error);
+                    alert('Erro ao enviar imagem: ' + data.error);
+                } else {
+                    console.log('Imagem enviada com sucesso:', data.url);
+                }
+            })
+            .catch(error => {
+                console.error('Erro de rede:', error);
+                alert('Erro de rede ao enviar a imagem.');
+            });
+        }
+
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        sendButton.addEventListener('click', sendMessage);
+
+        // Evento para quando um arquivo é selecionado
+        imageUpload.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                if (file.size > 5 * 1024 * 1024) { // Limite de 5 MB
+                    alert('A imagem é muito grande. O tamanho máximo permitido é 5 MB.');
+                    return;
+                }
+                sendImage(file);
+            }
+        });
+
+        // Conexão Socket.IO
+        socket.on('connect', () => {
+            console.log('Conectado ao servidor Socket.IO');
+            socket.emit('join_room_event', { room_id: currentRoomId });
+            updateActiveUsersCount();
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Desconectado do servidor Socket.IO');
+        });
+
+        socket.on('new_message', (data) => {
+            if (data.room_id === currentRoomId) {
+                addMessage(data);
+            }
+        });
+        
+        socket.on('user_joined_room', (data) => {
+            if (data.room_id === currentRoomId) {
+                const activeUsersSpan = document.getElementById('active-users-count');
+                let currentCount = parseInt(activeUsersSpan.textContent.split(':')[1].trim().split(' ')[0]) || 0;
+                activeUsersSpan.textContent = `Usuários ativos: ${currentCount + 1}`;
+            }
+        });
+
+        socket.on('user_left_room', (data) => {
+            if (data.room_id === currentRoomId) {
+                const activeUsersSpan = document.getElementById('active-users-count');
+                let currentCount = parseInt(activeUsersSpan.textContent.split(':')[1].trim().split(' ')[0]) || 0;
+                if (currentCount > 0) {
+                    activeUsersSpan.textContent = `Usuários ativos: ${currentCount - 1}`;
+                }
+            }
+        });
+
+        function updateActiveUsersCount() {
+            socket.emit('get_active_users', { room_id: currentRoomId });
+        }
+        
+        socket.on('active_users_update', (data) => {
+            if (data.room_id === currentRoomId) {
+                document.getElementById('active-users-count').textContent = `Usuários ativos: ${data.count}`;
+            }
+        });
+
+        window.addEventListener('beforeunload', () => {
+            socket.emit('leave_room_event', { room_id: currentRoomId });
+            socket.disconnect();
+        });
+        
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+    </script>
+</body>
+</html>

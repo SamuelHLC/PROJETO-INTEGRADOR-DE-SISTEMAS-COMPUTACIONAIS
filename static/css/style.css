@@ -1,0 +1,265 @@
+/* Arquivo CSS global (pode ser expandido) */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    background-color: #f0f2f5; /* Cor de fundo padrão */
+}
+
+.container {
+    display: flex;
+    height: 100vh;
+}
+
+.sidebar {
+    width: 280px; /* Largura um pouco maior */
+    background-color: #f8f9fa; /* Fundo mais claro */
+    padding: 20px;
+    border-right: 1px solid #dee2e6; /* Borda mais sutil */
+    display: flex;
+    flex-direction: column;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+}
+
+.user-info {
+    margin-bottom: 20px;
+    padding: 12px;
+    background-color: #007bff; /* Um azul agradável */
+    color: white;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 1.1em;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.user-info strong {
+    font-size: 1.1em;
+}
+
+.sidebar h3 {
+    margin-top: 0;
+    color: #343a40; /* Cor de texto escura */
+    font-size: 1.3em;
+    border-bottom: 1px solid #ced4da;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.rooms-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.rooms-list li {
+    padding: 15px 10px; /* Mais espaçamento */
+    border-bottom: 1px solid #e9ecef; /* Borda mais clara */
+    cursor: pointer;
+    transition: background-color 0.2s ease, padding-left 0.2s ease; /* Transição suave */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.rooms-list li:hover {
+    background-color: #e9ecef; /* Fundo levemente mais escuro no hover */
+    padding-left: 15px; /* Efeito visual ao passar o mouse */
+}
+
+.rooms-list li.active {
+    background-color: #cce5ff; /* Azul claro para sala ativa */
+    font-weight: bold;
+    border-left: 4px solid #007bff; /* Linha indicadora da sala ativa */
+    padding-left: 11px; /* Ajuste para a linha de 4px */
+}
+
+.room-details {
+    display: flex;
+    align-items: center;
+    flex-grow: 1; /* Ocupa o espaço disponível */
+}
+
+.room-name {
+    flex-grow: 1;
+    margin-right: 10px;
+    color: #495057; /* Cor de texto da sala */
+}
+
+.active-users {
+    font-size: 0.9em;
+    color: #6c757d; /* Cor mais sutil para contagem */
+    background-color: #e9ecef;
+    padding: 3px 8px;
+    border-radius: 10px;
+}
+
+.rooms-list li.active .active-users {
+    background-color: #007bff;
+    color: white;
+}
+
+.create-room-form {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.create-room-form input[type="text"] {
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    width: calc(100% - 22px); /* Ajuste para padding e borda */
+    margin-bottom: 10px;
+    font-size: 1em;
+}
+
+.create-room-form input[type="text"]::placeholder {
+    color: #6c757d;
+}
+
+.create-room-form button {
+    background-color: #28a745; /* Verde para criar */
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 100%;
+    font-size: 1.1em;
+    transition: background-color 0.3s ease;
+}
+
+.create-room-form button:hover {
+    background-color: #218838; /* Verde mais escuro no hover */
+}
+
+.logout-button {
+    margin-top: auto; /* Empurra para o final */
+    padding: 12px;
+    background-color: #dc3545; /* Vermelho para logout */
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    width: 100%;
+    font-size: 1.1em;
+    text-align: center;
+    text-decoration: none; /* Remove sublinhado do link */
+    transition: background-color 0.3s ease;
+}
+
+.logout-button:hover {
+    background-color: #c82333; /* Vermelho mais escuro no hover */
+}
+
+.main-content {
+    flex-grow: 1;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    background-color: #fff; /* Fundo branco para a área principal */
+}
+
+.main-content h1 {
+    color: #343a40;
+    margin-bottom: 15px;
+    font-size: 2em;
+}
+
+.main-content p {
+    color: #6c757d;
+    font-size: 1.1em;
+}
+
+.error {
+    color: #dc3545; /* Vermelho para erros */
+    margin-bottom: 15px;
+    text-align: center;
+    font-weight: bold;
+}
+
+/* Estilos específicos para login.html e register.html */
+.login-container, .register-container {
+    background-color: #fff;
+    padding: 30px 40px; /* Mais padding */
+    border-radius: 10px; /* Bordas mais arredondadas */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1); /* Sombra mais pronunciada */
+    text-align: center;
+    width: 380px; /* Um pouco mais largo */
+    animation: fadeIn 0.5s ease-out; /* Efeito de fade-in */
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.login-container h2, .register-container h2 {
+    margin-bottom: 25px; /* Mais espaço */
+    color: #333;
+    font-size: 2em;
+}
+
+.login-container input[type="text"],
+.login-container input[type="password"],
+.register-container input[type="text"],
+.register-container input[type="password"] {
+    width: calc(100% - 24px); /* Ajuste para padding */
+    padding: 12px; /* Mais padding interno */
+    margin-bottom: 18px; /* Mais espaço entre campos */
+    border: 1px solid #ccc;
+    border-radius: 6px; /* Bordas mais arredondadas */
+    font-size: 1.1em; /* Fonte maior */
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.login-container input[type="text"]:focus,
+.login-container input[type="password"]:focus,
+.register-container input[type="text"]:focus,
+.register-container input[type="password"]:focus {
+    border-color: #075e54; /* Destaque na borda ao focar */
+    box-shadow: 0 0 0 3px rgba(7, 94, 84, 0.2); /* Efeito de sombra suave */
+    outline: none; /* Remove contorno padrão */
+}
+
+.login-container button,
+.register-container button {
+    background-color: #28a745; /* Verde mais chamativo para botões */
+    color: white;
+    padding: 12px 25px; /* Mais padding no botão */
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.15em; /* Tamanho da fonte do botão */
+    transition: background-color 0.3s ease, transform 0.2s ease; /* Adiciona transição de transform */
+    width: 100%; /* Botão em largura total */
+}
+
+.login-container button:hover,
+.register-container button:hover {
+    background-color: #218838; /* Verde mais escuro no hover */
+    transform: translateY(-2px); /* Efeito de elevação suave */
+}
+
+.login-container button:active,
+.register-container button:active {
+    transform: translateY(0); /* Volta ao estado normal ao clicar */
+}
+
+.register-link, .login-link {
+    margin-top: 25px; /* Mais espaço */
+    font-size: 1em;
+}
+
+.register-link a, .login-link a {
+    color: #007bff; /* Azul para links */
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.register-link a:hover, .login-link a:hover {
+    text-decoration: underline;
+}

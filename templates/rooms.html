@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salas de Chat</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background-color: #f0f2f5; }
+        .container { display: flex; height: 100vh; }
+        .sidebar { width: 250px; background-color: #e0e0e0; padding: 20px; border-right: 1px solid #ccc; display: flex; flex-direction: column; }
+        .sidebar h3 { margin-top: 0; color: #333; }
+        .user-info { margin-bottom: 20px; padding: 10px; background-color: #075e54; color: white; border-radius: 5px; text-align: center;}
+        .user-info strong { font-size: 1.1em; }
+        .rooms-list ul { list-style: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; }
+        .rooms-list li { padding: 12px 10px; border-bottom: 1px solid #eee; cursor: pointer; transition: background-color 0.2s ease;}
+        .rooms-list li:hover { background-color: #f9f9f9; }
+        .rooms-list li.active { background-color: #dcf8c6; font-weight: bold; }
+        .room-details { display: flex; justify-content: space-between; align-items: center;}
+        .room-name { flex-grow: 1; margin-right: 10px;}
+        .active-users { font-size: 0.9em; color: #555; }
+        .create-room-form { margin-top: 20px; }
+        .create-room-form input[type="text"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: calc(100% - 18px); margin-bottom: 10px; }
+        .create-room-form button { background-color: #128c7e; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; width: 100%; }
+        .create-room-form button:hover { background-color: #075e54; }
+        .logout-button { margin-top: auto; padding: 10px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%;}
+        .logout-button:hover { background-color: #c82333; }
+        .main-content { flex-grow: 1; padding: 20px; display: flex; flex-direction: column; }
+        .error { color: red; margin-bottom: 15px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="user-info">
+                Bem-vindo, <strong>{{ username }}</strong>!
+            </div>
+            
+            <h3>Salas Disponíveis</h3>
+            <div class="rooms-list">
+                <ul id="rooms-list-ul">
+                    {% for room in rooms %}
+                        <li data-room-id="{{ room.id }}" class="{% if room.id == session.get('current_room_id') %}active{% endif %}">
+                            <div class="room-details">
+                                <span class="room-name">{{ room.nome }}</span>
+                                <span class="active-users" id="active-users-{{ room.id }}">({{ room.active_users }})</span>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <form method="post" action="{{ url_for('create_room') }}" class="create-room-form">
+                <input type="text" name="room_name" placeholder="Nome da nova sala" required>
+                <button type="submit">Criar Sala</button>
+            </form>
+
+            <a href="{{ url_for('logout') }}" class="logout-button">Logout</a>
+        </div>
+        
+        <div class="main-content">
+            <h1>Salas de Chat</h1>
+            <p>Selecione uma sala para entrar ou crie uma nova.</p>
+            
+            {% if error %}
+                <p class="error">{{ error }}</p>
+            {% endif %}
+
+            <div id="chat-preview" style="margin-top: 20px; flex-grow: 1; background-color: #f9f9f9; border-radius: 5px; padding: 15px; border: 1px dashed #ccc;">
+                <p><em>Selecione uma sala para ver detalhes ou entrar.</em></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        const roomsList = document.getElementById('rooms-list-ul');
+        const chatPreview = document.getElementById('chat-preview');
+        const userId = "{{ session.get('user_id') }}";
+        const currentRoomId = "{{ session.get('current_room_id') }}";
+
+        const socket = io.connect('http://' + document.domain + ':' + location.port);
+
+        function updateActiveUsersCount() {
+            fetch('/api/rooms')
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(room => {
+                        const activeUsersSpan = document.getElementById(`active-users-${room.id}`);
+                        if (activeUsersSpan) {
+                            activeUsersSpan.textContent = `(${room.active_users})`;
+                        }
+                    });
+                })
+                .catch(error => console.error('Erro ao buscar salas:', error));
+        }
+
+        setInterval(updateActiveUsersCount, 5000);
+        updateActiveUsersCount();
+
+        socket.on('connect', () => {
+            console.log('Conectado ao servidor Socket.IO');
+            if (currentRoomId) {
+                socket.emit('join_room_event', { room_id: currentRoomId });
+            }
+        });
+
+        socket.on('user_joined_room', (data) => {
+            const activeUsersSpan = document.getElementById(`active-users-${data.room_id}`);
+            if (activeUsersSpan) {
+                let currentCount = parseInt(activeUsersSpan.textContent.replace(/[()]/g, '')) || 0;
+                activeUsersSpan.textContent = `(${currentCount + 1})`;
+            }
+            if (String(data.room_id) === String(currentRoomId)) {
+                chatPreview.innerHTML = `<p><strong>${data.message}</strong></p><p><em>${data.timestamp}</em></p>`;
+            }
+        });
+
+        socket.on('user_left_room', (data) => {
+            const activeUsersSpan = document.getElementById(`active-users-${data.room_id}`);
+            if (activeUsersSpan) {
+                let currentCount = parseInt(activeUsersSpan.textContent.replace(/[()]/g, '')) || 0;
+                if (currentCount > 0) {
+                    activeUsersSpan.textContent = `(${currentCount - 1})`;
+                }
+            }
+            if (String(data.room_id) === String(currentRoomId)) {
+                chatPreview.innerHTML = `<p><strong>${data.message}</strong></p><p><em>${data.timestamp}</em></p>`;
+            }
+        });
+
+        roomsList.addEventListener('click', (event) => {
+            const target = event.target.closest('li');
+            if (!target) return;
+
+            const roomId = target.dataset.roomId;
+            const roomName = target.querySelector('.room-name').textContent;
+
+            roomsList.querySelectorAll('li').forEach(item => item.classList.remove('active'));
+            target.classList.add('active');
+
+            // **CORREÇÃO:** Substituído o formulário POST por um link GET
+            chatPreview.innerHTML = `
+                <h3>${roomName}</h3>
+                <p><strong>Usuários ativos:</strong> <span id="preview-active-users-${roomId}">(${document.getElementById(`active-users-${roomId}`).textContent})</span></p>
+                <p>Clique no botão abaixo para entrar na sala.</p>
+                <a href="/chat/${roomId}" style="background-color: #128c7e; color: white; padding: 10px 20px; border-radius: 4px; cursor: pointer; text-decoration: none;">Entrar na Sala</a>
+            `;
+            
+            // Atualiza o sessionStorage para referência no lado do cliente
+            sessionStorage.setItem('current_room_id', roomId);
+            sessionStorage.setItem('current_room_name', roomName);
+        });
+    </script>
+</body>
+</html>
